@@ -54,14 +54,32 @@
 					},
 
 					'dotes' : [
-						{'x' : 0.5,  'y' : 27},
-						{'x' : 3,    'y' : 64},
+						{'x' : 1,  'y' : 27},
+						{'x' : 3.3, 'y' : 74},
 						{'x' : -3.6, 'y' : 20},
 						{'x' : -0.5, 'y' : 80},
 					]
 
 
 				});
+/*
+				var c = document.getElementById('fafa').getContext('2d');
+				
+
+				document.getElementById('fafa').onmousemove = function(e) {
+
+				c.beginPath();
+				
+					c.strokeStyle = 'rgb('+ Math.round(Math.random() * 255) +', '+ Math.round(Math.random() * 255) + ', ' + Math.round(Math.random() * 255) + ')';
+
+					c.clearRect(0, 0, 300, 300);
+
+					c.moveTo(1, 1);
+					c.lineTo(e.offsetX, e.offsetY);
+					c.stroke();
+					c.closePath();
+				}
+*/
 
 			});
 		</script>
@@ -70,6 +88,7 @@
 	<body>
 		<div id="content">
 			<div id="cut"></div>
+			<!--canvas id="fafa" width="300" height="300" style="border:1px solid white"></canvas-->
 		</div>
 	</body>
 </html>
