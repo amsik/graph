@@ -12,7 +12,10 @@
             graph   = new Graph(options),
             iDote   = new Image();
 
-        //graph.testAreas(options.area.location.left);
+        //graph.testAreas(options.area.location.right);
+        //return;
+
+        $(this).css({'position' : 'relative'});
 
         // рисуем точки
         iDote.onload = function() {
@@ -54,8 +57,8 @@
                     offsets = graph.getOffset(e);
 
                     graph.positions[numDote] = [ 
-                        offsets.x - 8,
-                        offsets.y - 8
+                        offsets.x - graph.radius,
+                        offsets.y - graph.radius
                     ];
 
                     graph.setDirection(offset, offsets, numDote);
@@ -78,8 +81,15 @@
         $.extend(this, options);
 
         canvas = $('<canvas/>', { 'id': 'canva_graph' })
-                    .attr({ 'width': options.node.width(), 'height': options.node.height() })
-                    .appendTo(options.node);
+                    .attr({ 
+                        'width': options.node.width(), 
+                        'height': options.node.height() + 50
+                    })
+                    .appendTo(options.node)
+                    .css({
+                        'top'       : '-20px',
+                        'position'  : 'relative'
+                    });
 
         ctx = canvas[0].getContext('2d');
 
@@ -127,56 +137,40 @@
 
             var party, aLoc;
 
-            for ( var i = 0; i < this.positions.length; i++ ) {
-                party = i < 2 ? 'left' : 'right';
-                aLoc  = this.area.location[party];
+            party = num < 2 ? 'left' : 'right';
+            aLoc  = this.area.location[party];
 
-                if (num != i || !this.direction.x || !this.direction.y) {
-                    continue;
-                }
+            if (!this.direction.x || !this.direction.y) {
+                return;
+            }
 
-                var checkTheSign = function(pos, comparison, sign) {
-                    return sign == 'less' ? pos > comparison : pos < comparison;
-                }
+            var checkTheSign = function(pos, comparison, sign) {
+                return sign == 'less' ? pos > comparison : pos < comparison;
+            }
 
-                var comparisonX = {}, comparisonY = {};
+            var comparisonX = {}, comparisonY = {};
 
-                comparisonX = {
-                    'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius - 1) : aLoc[0] + aLoc[2] - this.radius + 2,
-                    'left'  : 'left' == party ? aLoc[0] - this.radius - 1 : aLoc[0] - this.radius + 1,
-                    'sign'  : 'left' == this.direction.x ? 'less' : 'over'
-                };
+            comparisonX = {
+                'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius - 1) : aLoc[0] + aLoc[2] - this.radius + 2,
+                'left'  : 'left' == party ? aLoc[0] - this.radius - 1 : aLoc[0] - this.radius + 1,
+                'sign'  : 'left' == this.direction.x ? 'less' : 'over'
+            };
 
 
-                comparisonY = {
-                    'down' : aLoc[3] - this.radius,
-                    'up'   : 0,
-                    'sign' : 'up' == this.direction.y ? 'less' : 'over'
-                };
-/*
-                _c([
-                    this.positions[i][1],
-                    comparisonY[this.direction.y], 
-                    comparisonY['sign']
-                ]);
-*/
-/*
-                _c([
-                    this.positions[i][0], 
-                    comparisonX[this.direction.x], 
-                    checkTheSign(this.positions[i][0], comparisonX[this.direction], comparisonX['sign']) 
-                ])
-*/
-                // проверяем по оси X
-                if ( !checkTheSign(this.positions[i][0], comparisonX[this.direction.x], comparisonX['sign']) ) {
-                    this.positions[i][0] = comparisonX[this.direction.x];
-                }
+            comparisonY = {
+                'down' : aLoc[3] - this.radius + 20,
+                'up'   : 0 + this.radius + 4,
+                'sign' : 'up' == this.direction.y ? 'less' : 'over'
+            };
 
-                // проверяем по оси Y
-                if ( !checkTheSign(this.positions[i][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
-                    this.positions[i][1] = comparisonY[this.direction.y];
-                }
+            // проверяем по оси X
+            if ( !checkTheSign(this.positions[num][0], comparisonX[this.direction.x], comparisonX['sign']) ) {
+                this.positions[num][0] = comparisonX[this.direction.x];
+            }
 
+            // проверяем по оси Y
+            if ( !checkTheSign(this.positions[num][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
+                this.positions[num][1] = comparisonY[this.direction.y];
             }
 
         },
@@ -184,13 +178,14 @@
         // рисуем 
         render: function(reDraw) {
 
-            ctx.clearRect(0, 0, 236, 69);
+            ctx.clearRect(0, 0, canvas.height(), canvas.width());
 
             if (!reDraw) {
     
                 // соберем координаты в кучу
                 for( var i = 0; i < 4; i++ ) {
                     this.positions[i] = this.toCoords(i, i < 2 ? 'left' : 'right');
+                    this.positions[i][1] += 20;
                 }
 
             }
@@ -274,12 +269,12 @@
         },
 
         startDrawLine: function() {
-            ctx.clearRect(0, 0, 236, 69);
+            ctx.clearRect(0, 0, canvas.width(), canvas.height());
             ctx.beginPath();
 
             ctx.moveTo(
                 this.area.location.left[0] - 9, 
-                this.positions[0][1] + (this.radius)
+                this.positions[0][1] + this.radius
             );
 
             ctx.lineTo(
