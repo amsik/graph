@@ -23,6 +23,8 @@
                 'img'   : iDote
             });
             
+            graph.radius = iDote.width / 2;
+
             graph.render();
 
         }
@@ -33,17 +35,21 @@
         // добавляем обработчик
         canvas.on('mousedown.KGraph', function(e) {
 
+            if ( 2 == e.button ) {
+                return;
+            }
+
             var 
                 offset = graph.getOffset(e),
-                numDote, offsets, direction; 
+                numDote, offsets; 
 
             if ( (numDote = graph.isPointInDote(offset)) !== false ) {
                 $(document).on('mousemove.KGraph', function(e) {
 
-                    if ('CANVAS' != e.target.nodeName.toUpperCase()) {
-                        $(this).off('mousemove.KGraph');                        
-                        return;
-                    }
+                    //if ('CANVAS' != e.target.nodeName.toUpperCase()) {
+                    //  $(this).off('mousemove.KGraph');                        
+                    //  return;
+                    //}
 
                     offsets = graph.getOffset(e);
 
@@ -52,7 +58,7 @@
                         offsets.y - 8
                     ];
 
-                    graph.setDirection(offset.x, offsets.x, numDote);
+                    graph.setDirection(offset, offsets, numDote);
                     graph.render(true);
                 });
             }
@@ -83,29 +89,33 @@
 
         doteParams  : {},                       // основные св-ва точки
         positions   : [],
-        direction   : '',
+        direction   : {},
 
         setDoteParams: function(obj) {
             this.doteParams = obj;
         },
 
         setDirection: function(down, move, numDote) {
-            if ( Math.abs( down - move ) < 5 ) {
-                return this.direction = false;
-            }
+
+            this.direction = {
+                'x' : down.x > move.x ? 'left'  : 'right',
+                'y' : down.y > move.y ? 'up'    : 'down',
+            };
 
             this.checkPositions(numDote);
 
-            this.direction = down > move ? 'left' : 'right';
         },
 
         inPathMatrix: function(loc, pos, axis) {
 
-            var realPos;
+            var realPos = pos + this.radius;
 
             if ('x' == axis) {
-                realPos = pos + this.doteParams.w / 2;
                 return loc[0] < realPos && (loc[0] + loc[2]) >= realPos;
+            }
+
+            if ('y' == axis) {
+                return loc[1] < realPos && (loc[1] + loc[3]) >= realPos;
             }
 
             return false;
@@ -121,20 +131,52 @@
                 party = i < 2 ? 'left' : 'right';
                 aLoc  = this.area.location[party];
 
-                if (num != i) {
+                if (num != i || !this.direction.x || !this.direction.y) {
                     continue;
                 }
 
-                if ( !this.inPathMatrix(aLoc, this.positions[i][0], 'x') && 'left' == party && this.direction) {
-
-                    if ( 'left' == this.direction ) {
-                        this.positions[i][0] = aLoc[0] - this.doteParams['w'] / 2;
-                    } else {
-                        this.positions[i][0] = this.area.location['left'][0] + this.area.location['left'][2] - this.doteParams.w / 2;
-                    }
-
+                var checkTheSign = function(pos, comparison, sign) {
+                    return sign == 'less' ? pos > comparison : pos < comparison;
                 }
-    
+
+                var comparisonX = {}, comparisonY = {};
+
+                comparisonX = {
+                    'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius - 1) : aLoc[0] + aLoc[2] - this.radius + 2,
+                    'left'  : 'left' == party ? aLoc[0] - this.radius - 1 : aLoc[0] - this.radius + 1,
+                    'sign'  : 'left' == this.direction.x ? 'less' : 'over'
+                };
+
+
+                comparisonY = {
+                    'down' : aLoc[3] - this.radius,
+                    'up'   : 0,
+                    'sign' : 'up' == this.direction.y ? 'less' : 'over'
+                };
+/*
+                _c([
+                    this.positions[i][1],
+                    comparisonY[this.direction.y], 
+                    comparisonY['sign']
+                ]);
+*/
+/*
+                _c([
+                    this.positions[i][0], 
+                    comparisonX[this.direction.x], 
+                    checkTheSign(this.positions[i][0], comparisonX[this.direction], comparisonX['sign']) 
+                ])
+*/
+                // проверяем по оси X
+                if ( !checkTheSign(this.positions[i][0], comparisonX[this.direction.x], comparisonX['sign']) ) {
+                    this.positions[i][0] = comparisonX[this.direction.x];
+                }
+
+                // проверяем по оси Y
+                if ( !checkTheSign(this.positions[i][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
+                    this.positions[i][1] = comparisonY[this.direction.y];
+                }
+
             }
 
         },
@@ -153,14 +195,13 @@
 
             }
                                 
-            ///this.checkPositions();
 
             // рисуем линии
             this.declare(this.startDrawLine, function(i) {
 
                 var pos = [
-                    this.positions[i][0] + (this.doteParams['w'] / 2),
-                    this.positions[i][1] + (this.doteParams['h'] / 2),
+                    this.positions[i][0] + (this.radius),
+                    this.positions[i][1] + (this.radius),
                 ];
 
                 return new Line(pos).draw();
@@ -169,7 +210,7 @@
 
                 ctx.lineTo(
                     this.area.location.right[0] + this.area.location.right[2] + 10, 
-                    this.positions[3][1] + (this.doteParams['h'] / 2)
+                    this.positions[3][1] + (this.radius)
                 );
 
                 ctx.stroke();
@@ -238,12 +279,12 @@
 
             ctx.moveTo(
                 this.area.location.left[0] - 9, 
-                this.positions[0][1] + (this.doteParams['h'] / 2)
+                this.positions[0][1] + (this.radius)
             );
 
             ctx.lineTo(
-                this.positions[0][0] + (this.doteParams['w'] / 2), 
-                this.positions[0][1] + (this.doteParams['h'] / 2)
+                this.positions[0][0] + (this.radius), 
+                this.positions[0][1] + (this.radius)
             );
 
             ctx.strokeStyle = '#8695a2';
@@ -269,9 +310,9 @@
                 var c = division[axis] + division[axis] * aMark[axis].step * (aDote[axis] / aMark[axis].step);
 
                 if ('y' == axis) {
-                    c = aLoc[3] - c - (this.doteParams['w'] / 2);
+                    c = aLoc[3] - c - (this.radius);
                 } else {
-                    c -= this.doteParams['w'] / 2 - 8;  
+                    c -= this.radius - 8;  
                 }
 
                 if ( 'x' == axis && 'right' == party ) {
