@@ -73,6 +73,8 @@
             $(this).off('mousemove.KGraph');
         });
 
+        return this;
+
     }
 
 
@@ -98,8 +100,8 @@
     Graph.prototype = {
 
         doteParams  : {},                       // основные св-ва точки
-        positions   : [],
-        direction   : {},
+        positions   : [],                       // текущии позиции для точек
+        direction   : {},                       // направления перетаскивания ( вверх/вниз || влево/вправо)
 
         setDoteParams: function(obj) {
             this.doteParams = obj;
@@ -152,7 +154,7 @@
 
             comparisonX = {
                 'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius - 1) : aLoc[0] + aLoc[2] - this.radius + 2,
-                'left'  : 'left' == party ? aLoc[0] - this.radius - 1 : aLoc[0] - this.radius + 1,
+                'left'  : 'left' == party ? (aLoc[0] - this.radius - 1) : aLoc[0] - this.radius + 1,
                 'sign'  : 'left' == this.direction.x ? 'less' : 'over'
             };
 
@@ -172,6 +174,23 @@
             if ( !checkTheSign(this.positions[num][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
                 this.positions[num][1] = comparisonY[this.direction.y];
             }
+
+
+            /**
+            * Проверяем, чтобы кнопка не заходило за соседнюю кнопку
+            */
+            var 
+                nOtherDote  = num + ('left' == this.direction.x ? -1 : 1),
+                signX       = 'left' == this.direction.x ? 'over' : 'less';
+            
+            if ('undefined' == typeof this.positions[nOtherDote]) {
+                return;
+            }
+
+            if ( checkTheSign(this.positions[num][0], this.positions[nOtherDote][0], signX) ) {
+                this.positions[num][0] = this.positions[nOtherDote][0];   
+            }
+
 
         },
 
