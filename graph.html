@@ -12,12 +12,22 @@
 		<style>
 			body { background-color: #0C1124;}
 
-			#content { padding: 30px; }
+			#content {
+				padding: 20px;
+            }
+
 
 			#cut {
-				width: 236px;
-				height: 69px;
 				background: url(images/bg-graf.png) no-repeat;	
+				font-size:14px;
+                font-family: tahoma;
+                border:1px solid #455a6b;
+                background-color:#384757;
+                box-shadow:0 0 15px #192027 inset;
+                width:248px;
+                height:98px;	
+                position: relative;
+				background-position: 6px 25px;			
 			}
 
 
@@ -55,41 +65,22 @@
 					},
 
 					'dotes' : [
-						{'x' : 1,  'y' : 50},
-						{'x' : 3.3,  'y' : 74},
-						{'x' : -3.5, 'y' : 37},
-						{'x' : -1, 'y' : 80},
-					]
-
+						{'x' : 1,  'y' : 50, 'area' : 'left'},
+						{'x' : 3.3,  'y' : 74, 'area' : 'left'},
+						{'x' : -3.5, 'y' : 37, 'area' : 'right'},
+						{'x' : -1, 'y' : 80, 'area' : 'right'},
+					],
 
 				});
-/*
-				var c = document.getElementById('fafa').getContext('2d');
-				
-
-				document.getElementById('fafa').onmousemove = function(e) {
-
-				c.beginPath();
-				
-					c.strokeStyle = 'rgb('+ Math.round(Math.random() * 255) +', '+ Math.round(Math.random() * 255) + ', ' + Math.round(Math.random() * 255) + ')';
-
-					c.clearRect(0, 0, 300, 300);
-
-					c.moveTo(1, 1);
-					c.lineTo(e.offsetX, e.offsetY);
-					c.stroke();
-					c.closePath();
-				}
-*/
 
 			});
+			
 		</script>
 
 	</head>
 	<body>
 		<div id="content">
 			<div id="cut"></div>
-			<!--canvas id="fafa" width="300" height="300" style="border:1px solid white"></canvas-->
 		</div>
 	</body>
 </html>

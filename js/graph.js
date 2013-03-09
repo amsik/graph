@@ -12,10 +12,7 @@
             graph   = new Graph(options),
             iDote   = new Image();
 
-        //graph.testAreas(options.area.location.right);
-        //return;
-
-        $(this).css({'position' : 'relative'});
+        graph.countDotes = options.dotes.length;
 
         // рисуем точки
         iDote.onload = function() {
@@ -29,7 +26,8 @@
             graph.radius = iDote.width / 2;
 
             graph.render();
-
+            graph.calculateValue();
+            graph.displayData();
         }
 
         iDote.src = 'images/dote.png';
@@ -45,6 +43,7 @@
             var 
                 offset = graph.getOffset(e),
                 numDote, offsets; 
+
 
             if ( (numDote = graph.isPointInDote(offset)) !== false ) {
                 $(document).on('mousemove.KGraph', function(e) {
@@ -63,6 +62,9 @@
 
                     graph.setDirection(offset, offsets, numDote);
                     graph.render(true);
+
+                    // отображаем значения громкости / скорости вверху
+                    graph.displayData();
                 });
             }
 
@@ -89,8 +91,10 @@
                     })
                     .appendTo(options.node)
                     .css({
-                        'top'       : '-20px',
-                        'position'  : 'relative'
+                        'top'        : '-20px',
+                        'position'   : 'relative',
+                        'marginLeft' : '6px',
+                        'marginTop'  : '25px'
                     });
 
         ctx = canvas[0].getContext('2d');
@@ -102,9 +106,112 @@
         doteParams  : {},                       // основные св-ва точки
         positions   : [],                       // текущии позиции для точек
         direction   : {},                       // направления перетаскивания ( вверх/вниз || влево/вправо)
+        values      : [],
 
         setDoteParams: function(obj) {
             this.doteParams = obj;
+        },
+
+        getPosition: function(i) {
+            return {
+                'x'     : this.positions[i][0],
+                'y'     : this.positions[i][1],
+                'party' : this.positions[i][2]   
+            }
+        },
+
+        checkVal: function(that, who) {
+
+            if ( that > who['max'] ) 
+                return who['max'];
+
+            if ( that < who['min'] )
+                return who['min'];
+
+            return that;
+
+        },
+
+        calculateValue: function(n) {
+
+            if (!n && n != 0) { 
+                for( var i = 0; i < this.countDotes; i++ ) {
+                    this.values[i] = _getValue.call(this, this.getPosition(i));
+                }
+            } else {
+                this.values[n] = _getValue.call(this, this.getPosition(n));
+            }
+            
+
+            // получение значения из координат
+            function _getValue(coords) {
+
+                // сдвиг по координатам по оси Х
+                var shiftX = coords.party == 'left' ? 1 : -2;
+
+                var c = {
+                    'x' : coords.x + this.radius + shiftX,
+                    'y' : coords.y + this.radius
+                };
+
+                var 
+                    aArea = this.area.location[coords['party']],        // активная локация
+                    aMark = this.marking[coords['party']],              // активная маркировка
+                    params = {};
+
+
+                params = {
+                    'x' : {
+                        'values'  : Math.abs( aMark['x']['max'] - aMark['x']['min'] ),
+                        'percent' : (c.x - aArea[0]) / aArea[2]
+                    },
+                    'y' : {
+                        'values'  : Math.abs( aMark['y']['max'] - aMark['y']['min'] ),
+                        'percent' : (c.y - 20) / aArea[3]
+                    }
+                };
+
+
+                var rTime   = params['x']['percent'] * params['x']['values']
+                var rVolume = Math.ceil(params['y']['percent'] * params['y']['values'])
+
+                if (coords.party == 'right') {
+                    rTime = rTime - params['x']['values']
+                }
+
+                return {
+                    'time'   : this.checkVal(rTime.toFixed(1), aMark['x']),
+                    'volume' : this.checkVal(aMark['y']['max'] - rVolume, aMark['y'])
+                }
+
+            }
+
+
+        },
+
+        displayData: function() {
+
+            // позиции для значений кнопок
+            var posPushBtns = getPosData();
+
+            var text, a, layout = [];
+
+            ctx.clearRect(0, 0, 250, 12);
+
+            for( var i = 0; i < 4; i++ ) {
+
+                a = posPushBtns[i];
+
+                text = new Text(a['mainText']).display();
+               
+                layout = ['(', this.values[i]['time'], '*', this.values[i]['volume'], ')'];
+
+                a['extraText']['text'] = layout.join('');
+                text.addText(a['extraText']);
+
+            }
+
+
         },
 
         setDirection: function(down, move, numDote) {
@@ -139,8 +246,10 @@
 
             var party, aLoc;
 
-            party = num < 2 ? 'left' : 'right';
+            party = this.dotes[num].area; 
             aLoc  = this.area.location[party];
+
+            this.positions[num][2] = party;
 
             if (!this.direction.x || !this.direction.y) {
                 return;
@@ -153,8 +262,8 @@
             var comparisonX = {}, comparisonY = {};
 
             comparisonX = {
-                'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius - 1) : aLoc[0] + aLoc[2] - this.radius + 2,
-                'left'  : 'left' == party ? (aLoc[0] - this.radius - 1) : aLoc[0] - this.radius + 1,
+                'right' : 'left' == party ? (aLoc[0] + aLoc[2] - this.radius) : aLoc[0] + aLoc[2] - this.radius + 3,
+                'left'  : 'left' == party ? (aLoc[0] - this.radius - 1) : aLoc[0] - this.radius + 2,
                 'sign'  : 'left' == this.direction.x ? 'less' : 'over'
             };
 
@@ -180,36 +289,42 @@
             * Проверяем, чтобы кнопка не заходило за соседнюю кнопку
             */
             var 
-                nOtherDote  = num + ('left' == this.direction.x ? -1 : 1),
-                signX       = 'left' == this.direction.x ? 'over' : 'less';
-            
-            if ('undefined' == typeof this.positions[nOtherDote]) {
-                return;
+                otherDote = ('left' == this.direction.x ? -1 : 1),
+                n         = num + otherDote,
+                signX     = 'left' == this.direction.x ? 'over' : 'less';
+
+
+
+            if ('undefined' != typeof this.positions[n]) {
+
+                var otherPos  = this.positions[n][0];
+
+                if ( checkTheSign(this.positions[num][0], otherPos, signX) ) {
+                    this.positions[num][0] = otherPos;   
+
+                }
             }
 
-            if ( checkTheSign(this.positions[num][0], this.positions[nOtherDote][0], signX) ) {
-                this.positions[num][0] = this.positions[nOtherDote][0];   
-            }
-
-
+            // считаем значения
+            this.calculateValue(num);
         },
 
         // рисуем 
         render: function(reDraw) {
 
-            ctx.clearRect(0, 0, canvas.height(), canvas.width());
+            ctx.clearRect(0, 10, canvas.height(), canvas.width());
 
             if (!reDraw) {
     
                 // соберем координаты в кучу
-                for( var i = 0; i < 4; i++ ) {
-                    this.positions[i] = this.toCoords(i, i < 2 ? 'left' : 'right');
+                for( var i = 0; i < this.countDotes; i++ ) {
+                    this.positions[i] = this.toCoords(i, this.dotes[i].area);
                     this.positions[i][1] += 20;
+                    this.positions[i][2] = this.dotes[i]['area'];
                 }
 
             }
                                 
-
             // рисуем линии
             this.declare(this.startDrawLine, function(i) {
 
@@ -277,7 +392,7 @@
                 startFunc.apply(this);
             }
 
-            for( var i = 0; i < 4; i++ ) {
+            for( var i = 0; i < this.countDotes; i++ ) {
                 iFunc.call(this, i);
             }
             
@@ -288,7 +403,7 @@
         },
 
         startDrawLine: function() {
-            ctx.clearRect(0, 0, canvas.width(), canvas.height());
+            ctx.clearRect(0, 10, canvas.width(), canvas.height());
             ctx.beginPath();
 
             ctx.moveTo(
@@ -402,6 +517,84 @@
 
         return this;
     };
+
+
+    function Text(params) {
+
+        this.font       = 'normal normal 12px Tahoma';
+        this.fillStyle  = '#fff';
+
+        $.extend(this, params);
+
+        this.startText = this.text;
+
+        this.display = function() {
+
+            if (!this.text) {
+                return;
+            }
+
+            ctx.save();
+            ctx.font        = this.font;
+            ctx.fillStyle   = this.fillStyle;
+
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.restore();
+
+            return this;
+        }
+
+        this.addText = function(params) {
+            $.extend(this, params);
+            
+            var m           = ctx.measureText(this.startText);
+            var metricWidth = params['metric'] || 2;
+
+            this.x += m.width + metricWidth;
+
+            this.display();
+        }
+
+    }
+
+
+    function getPosData() {
+        return {
+            '0' : {
+                'mainText' : {
+                    'text' : 'A', 'x' : 0, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                },
+                'extraText' : {
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                }
+            },
+            '1' : {
+                'mainText' : {
+                    'text' : 'B', 'x' : 60, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                },
+                'extraText' : {
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                }                    
+            },
+            '2' : {
+                'mainText' : {
+                    'text' : 'C', 'x' : 120, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                },
+                'extraText' : {
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                }                    
+            },
+            '3' : {
+                'mainText' : {
+                    'text' : 'D', 'x' : 182, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                },
+                'extraText' : {
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                }                    
+            },
+
+        }
+    }
 
 })(jQuery);
 
