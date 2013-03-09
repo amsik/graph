@@ -140,6 +140,18 @@
                 }
             } else {
                 this.values[n] = _getValue.call(this, this.getPosition(n));
+
+                // аргументы для callback функций
+                var clbArguments = [this.values[n]['time'], this.values[n]['volume'], n, this.values];
+
+                // диспатчим событие на элементе
+                if ('string' == typeof this.event) {
+                    this.node.trigger(this.event, clbArguments);    
+                }
+
+                if ('function' == typeof this.callback) {
+                    this.callback.apply(this, clbArguments);
+                }
             }
             
 
