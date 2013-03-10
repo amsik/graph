@@ -1,6 +1,118 @@
 ;(function($){
     
-    var canvas, ctx;
+    var canvas, ctx, targetsConf = {}, airFile, toConf = null;
+
+    // -------------   Работа с файлами в Adobe AIR  -------------
+    function AIRFile() {    
+
+        // Читаем или записываем из файла
+        this.fileName = air.File.applicationStorageDirectory.resolvePath('params_graph.ini');    
+
+        if ( !this.fileName.exists ) {
+            this.writeToFile('');
+        }
+
+        var config = this.readFromFile();
+
+        config = this.parseConfig(config);
+
+        // создаем объект из имен кнопок
+        for( var i in config ) {
+
+            targetsConf[i] = { 
+                'time'     : config[i]['time'], 
+                'volume'   : config[i]['volume'] 
+            };
+
+        }
+
+    }
+
+    AIRFile.prototype = {
+
+        // запись в файл
+        writeToFile: function(content, mode) {
+            mode = mode || 'WRITE';
+
+            var stream  = new air.FileStream();
+            
+            stream.open( this.fileName, air.FileMode[mode] );
+            stream.writeMultiByte( content, air.File.systemCharset );
+            stream.close();
+        },
+
+        // чтение из файла
+        readFromFile: function() {
+            var content = null;                                                       
+            var stream  = new air.FileStream();
+            
+            stream.open( this.fileName, air.FileMode.READ );
+            content = stream.readMultiByte( stream.bytesAvailable, air.File.systemCharset );
+            stream.close(); 
+
+            return content;     
+        },
+
+        // разбор конфига на объект
+        parseConfig: function (content) {
+            var elements, values = {};
+
+            elements = content.split(';');
+
+            for( var i = 0; i < elements.length; i++ ) {
+
+                var 
+                    elOnce = elements[i].split(":"),
+                    params;
+
+                if ("" == elOnce[0]) {
+                    continue;
+                }
+
+
+                params = elOnce[1].split(',');
+
+                values[elOnce[0]] = { 
+                    'time'     : params[0], 
+                    'volume'   : params[1] 
+                };
+            }
+
+            return values;
+        },
+
+        // перевод объекта в строку для конфига
+        toStr: function(obj) {
+            var str = '';
+
+            for( var i in obj ) {
+                str += i + ":" + obj[i].time + "," + obj[i].volume + ";";
+            }
+
+            return str;
+        }
+    };
+
+
+    function airTrace(obj) {
+        for(var i in  obj) {
+
+            if ('object' == typeof obj[i]) {
+                air.trace(i + ": ");    
+
+                for(var j in obj[i]) {
+                    air.trace(j + ": " + obj[i][j]);
+                }
+            } else {
+                air.trace(i + ": " + obj[i]); 
+            }
+            
+        }
+    }
+
+    if ('undefined' != typeof air) {
+        airFile = new AIRFile();
+    }
 
     $.fn.KGraph = function(options) {
 
@@ -12,7 +124,21 @@
             graph   = new Graph(options),
             iDote   = new Image();
 
-        graph.countDotes = options.dotes.length;
+        graph.countDotes = options.dotes.length;        // кол-во точек
+
+        graph.offsetY    = 22;                          // смещение по оси Y
+        graph.offsetX    = 0;                           // смещение по оси X
+
+        if ('undefined' != typeof air) {
+            
+            var conf = airFile.parseConfig(airFile.readFromFile());           
+
+            $.each(conf, function(index, element) {
+                graph.dotes[index].x = element.time;
+                graph.dotes[index].y = element.volume;
+            });
+             airTrace(graph.dotes);
+        }
 
         // рисуем точки
         iDote.onload = function() {
@@ -94,7 +220,7 @@
                         'top'        : '-20px',
                         'position'   : 'relative',
                         'marginLeft' : '6px',
-                        'marginTop'  : '25px'
+                        'marginTop'  : '22px'
                     });
 
         ctx = canvas[0].getContext('2d');
@@ -137,6 +263,7 @@
             if (!n && n != 0) { 
                 for( var i = 0; i < this.countDotes; i++ ) {
                     this.values[i] = _getValue.call(this, this.getPosition(i));
+                    targetsConf[i] = this.values[i];
                 }
             } else {
                 this.values[n] = _getValue.call(this, this.getPosition(n));
@@ -152,18 +279,35 @@
                 if ('function' == typeof this.callback) {
                     this.callback.apply(this, clbArguments);
                 }
+
+                targetsConf[n] = this.values[n];
             }
+
             
+            if ('undefined' != typeof air) {
+                clearTimeout(toConf);    
+    
+                toConf = setTimeout(function() {
+                    airFile.writeToFile( airFile.toStr(targetsConf) );
+                }, 3000);
+            }
+
 
             // получение значения из координат
             function _getValue(coords) {
 
                 // сдвиг по координатам по оси Х
-                var shiftX = coords.party == 'left' ? 1 : -2;
+                // TODO: исправлено на одинаковый сдвиг
+                //var shiftX = coords.party == 'left' ? 1 : 1;
+                //var shiftY = coords.party == 'left' ? 1.5 : 1.5;
+
+                var shiftY = 1.5;
+                var shiftX = 1;
+
 
                 var c = {
-                    'x' : coords.x + this.radius + shiftX,
-                    'y' : coords.y + this.radius
+                    'x' : coords.x + this.radius - shiftX,
+                    'y' : coords.y + this.radius - shiftY
                 };
 
                 var 
@@ -281,7 +425,7 @@
 
 
             comparisonY = {
-                'down' : aLoc[3] - this.radius + 20,
+                'down' : aLoc[3] - this.radius + this.offsetY,
                 'up'   : 0 + this.radius + 4,
                 'sign' : 'up' == this.direction.y ? 'less' : 'over'
             };
@@ -331,7 +475,10 @@
                 // соберем координаты в кучу
                 for( var i = 0; i < this.countDotes; i++ ) {
                     this.positions[i] = this.toCoords(i, this.dotes[i].area);
-                    this.positions[i][1] += 20;
+
+                    // делаем сдвиг
+                    this.positions[i][0] += this.offsetX;
+                    this.positions[i][1] += this.offsetY;
                     this.positions[i][2] = this.dotes[i]['area'];
                 }
 
@@ -570,38 +717,41 @@
     }
 
 
+
+
+
     function getPosData() {
         return {
             '0' : {
                 'mainText' : {
-                    'text' : 'A', 'x' : 0, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                    'text' : 'A', 'x' : 0, 'y' : 10, 'font' : 'bold normal 11px Tahoma'
                 },
                 'extraText' : {
-                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 11px Tahoma'                        
                 }
             },
             '1' : {
                 'mainText' : {
-                    'text' : 'B', 'x' : 60, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                    'text' : 'B', 'x' : 59, 'y' : 10, 'font' : 'bold normal 11px Tahoma'
                 },
                 'extraText' : {
-                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 11px Tahoma'                        
                 }                    
             },
             '2' : {
                 'mainText' : {
-                    'text' : 'C', 'x' : 120, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                    'text' : 'C', 'x' : 118, 'y' : 10, 'font' : 'bold normal 11px Tahoma'
                 },
                 'extraText' : {
-                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 11px Tahoma'                        
                 }                    
             },
             '3' : {
                 'mainText' : {
-                    'text' : 'D', 'x' : 182, 'y' : 8, 'font' : 'bold normal 12px Tahoma'
+                    'text' : 'D', 'x' : 182, 'y' : 10, 'font' : 'bold normal 11px Tahoma'
                 },
                 'extraText' : {
-                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 12px Tahoma'                        
+                    'fillStyle' : '#b4c1ca', 'font' : 'normal normal 11px Tahoma'                        
                 }                    
             },
 
