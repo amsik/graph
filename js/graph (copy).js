@@ -1,6 +1,6 @@
 ;(function($){
     
-    var targetsConf = {}, airFile, toConf = null, positions = [], values = [];
+    var /*canvas, ctx, ctx = [],*/ targetsConf = {}, airFile, toConf = null, positions;
 
     if ( typeof document.onselectstart != 'undefined' ) {
         document.onselectstart = function() {
@@ -189,11 +189,11 @@
                 $(document).on('mousemove.KGraph_' + graph.blockId, function(e) {
                     offsets = graph.getOffset(e);
 
-                    positions[graph.blockId][numDote] = [ 
+                    graph.positions[numDote] = [ 
                         offsets.x - graph.radius,
                         offsets.y - graph.radius
                     ];
-                    _c(offsets.x)
+
                     graph.setDirection(offset, offsets, numDote);
                     graph.render(true);
 
@@ -221,9 +221,6 @@
 
         var blockId  = 'graph_' + Math.floor(Math.random() * 10000);
 
-        positions[blockId] = [];
-        values[blockId]    = [];
-
         this.canvas = $('<canvas/>', { 'id': 'canva_' + blockId })
                     .attr({ 
                         'width': options.node.width(), 
@@ -239,7 +236,7 @@
 
         this.ctx = document.getElementById('canva_' + blockId).getContext('2d');
 
-        this.node.prepend('<div class="pushbuttons" id="'+ blockId +'"></div>');
+        this.node.prepend('<div class="pushbuttons" id="'+ this.blockId +'"></div>');
 
         this.blockId = blockId;
 
@@ -265,20 +262,20 @@
 
     Graph.prototype = {
 
-        doteParams  : {},   // основные св-ва точки2
+        doteParams  : {},   // основные св-ва точки
+        positions   : [],   // текущии позиции для точек
         direction   : {},   // направления перетаскивания ( вверх/вниз || влево/вправо)
+        values      : [],   // значения для точек
 
         setDoteParams: function(obj) {
             this.doteParams = obj;
         },
 
         getPosition: function(i) {
-            var pos = positions[this.blockId];
-
             return {
-                'x'     : pos[i][0],
-                'y'     : pos[i][1],
-                'party' : pos[i][2] 
+                'x'     : this.positions[i][0],
+                'y'     : this.positions[i][1],
+                'party' : this.positions[i][2]   
             }
         },
 
@@ -296,10 +293,10 @@
                 gId = this.groups[i];
 
                 if (false != vol) {
-                    values[this.blockId][gId]['volume']  = values[this.blockId][n]['volume'];    
+                    this.values[gId]['volume']  = this.values[n]['volume'];    
                 }
                 
-                positions[this.blockId][gId][1] = positions[this.blockId][n][1];
+                this.positions[gId][1] = this.positions[n][1];
             } 
 
         },
@@ -320,13 +317,13 @@
 
             if (!n && n != 0) { 
                 for ( var i = 0; i < this.countDotes; i++ ) {
-                    values[this.blockId][i] = targetsConf[i] = _getValue.call(this, this.getPosition(i));
+                    this.values[i] = targetsConf[i] = _getValue.call(this, this.getPosition(i));
                 }
             } else {
-                values[this.blockId][n] = targetsConf[n] = _getValue.call(this, this.getPosition(n));
+                this.values[n] = targetsConf[n] = _getValue.call(this, this.getPosition(n));
 
                 // аргументы для callback функций
-                var clbArguments = [values[this.blockId][n]['time'], values[this.blockId][n]['volume'], n, values[this.blockId]];
+                var clbArguments = [this.values[n]['time'], this.values[n]['volume'], n, this.values];
 
                 // диспатчим событие на элементе
                 if ('string' == typeof this.event) {
@@ -413,7 +410,7 @@
                 layout = [], currBlock = this.node.find('.pushbuttons');
 
             for ( var i = 0; i < 4; i++ ) {
-               layout = ['(', values[this.blockId][i]['time'], '*', values[this.blockId][i]['volume'], ')'];
+               layout = ['(', this.values[i]['time'], '*', this.values[i]['volume'], ')'];
 
                doteBlock = currBlock.find('.dote_block').eq(i);
 
@@ -453,12 +450,12 @@
         // проверка позиций
         checkPositions: function(num) {
 
-            var party, aLoc, pos = positions[this.blockId];;
+            var party, aLoc;
 
             party = this.dotes[num].area; 
             aLoc  = this.area.location[party];
 
-            pos[num][2] = party;
+            this.positions[num][2] = party;
 
             if (!this.direction.x || !this.direction.y) {
                 return;
@@ -484,13 +481,13 @@
             };
 
             // проверяем по оси X
-            if ( !checkTheSign(pos[num][0], comparisonX[this.direction.x], comparisonX['sign']) ) {
-                pos[num][0] = comparisonX[this.direction.x];
+            if ( !checkTheSign(this.positions[num][0], comparisonX[this.direction.x], comparisonX['sign']) ) {
+                this.positions[num][0] = comparisonX[this.direction.x];
             }
 
             // проверяем по оси Y
-            if ( !checkTheSign(pos[num][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
-                pos[num][1] = comparisonY[this.direction.y];
+            if ( !checkTheSign(this.positions[num][1], comparisonY[this.direction.y], comparisonY['sign']) ) {
+                this.positions[num][1] = comparisonY[this.direction.y];
             }
 
 
@@ -504,12 +501,12 @@
 
 
 
-            if ('undefined' != typeof pos[n]) {
+            if ('undefined' != typeof this.positions[n]) {
 
-                var otherPos  = pos[n][0];
+                var otherPos  = this.positions[n][0];
 
-                if ( checkTheSign(pos[num][0], otherPos, signX) ) {
-                    pos[num][0] = otherPos;   
+                if ( checkTheSign(this.positions[num][0], otherPos, signX) ) {
+                    this.positions[num][0] = otherPos;   
 
                 }
             }
@@ -522,21 +519,18 @@
         // рисуем 
         render: function(reDraw) {
 
-
             this.ctx.clearRect(0, 10, this.canvas.height(), this.canvas.width());
-
-            var pos = positions[this.blockId];
 
             if (!reDraw) {
     
                 // соберем координаты в кучу
                 for ( var i = 0; i < this.countDotes; i++ ) {
-                    pos[i] = this.toCoords(i, this.dotes[i].area);
+                    this.positions[i] = this.toCoords(i, this.dotes[i].area);
 
                     // делаем сдвиг
-                    pos[i][0] += this.offsetX;
-                    pos[i][1] += this.offsetY;
-                    pos[i][2] = this.dotes[i]['area'];
+                    this.positions[i][0] += this.offsetX;
+                    this.positions[i][1] += this.offsetY;
+                    this.positions[i][2] = this.dotes[i]['area'];
 
                 }
 
@@ -551,18 +545,18 @@
             // рисуем линии
             this.declare(this.startDrawLine, function(i) {
 
-                var positions = [
-                    pos[i][0] + (this.radius),
-                    pos[i][1] + (this.radius),
+                var pos = [
+                    this.positions[i][0] + (this.radius),
+                    this.positions[i][1] + (this.radius),
                 ];
 
-                return new Line(positions, this.ctx).draw();
+                return new Line(pos, this.ctx).draw();
 
             }, function() {
 
                 this.ctx.lineTo(
                     this.area.location.right[0] + this.area.location.right[2] + 10, 
-                    pos[3][1] + (this.radius)
+                    this.positions[3][1] + (this.radius)
                 );
 
                 this.ctx.stroke();
@@ -572,7 +566,7 @@
 
             // рисуем точки
             this.declare(null, function(i) {
-                return new Dote(this.doteParams.img, this.ctx).draw(pos[i]);
+                return new Dote(this.doteParams.img, this.ctx).draw(this.positions[i]);
             });
 
 
@@ -582,9 +576,11 @@
         * На кнопке или не
         */
         isPointInDote: function(offset) {
-
-            var pos = positions[this.blockId], shifts = [];
-
+            //_c(this.positions[0][0]);
+            var pos = this.positions, shifts = [];
+//_c(this.canvas.attr('id') + ": ")
+//_c(offset)
+            
             for ( var i = 0; i < pos.length; i++ ) {
                 
                 shifts = [
@@ -592,12 +588,17 @@
                     pos[i][1] + this.doteParams['h'], 
                 ];
 
+//_c(shifts)
+
+//_c('-----------------------------')
+
                 if ( this.between(pos[i][0], shifts[0], offset.x) && this.between(pos[i][1], shifts[1], offset.y) ) {
                     return i;
                 }
 
             }
 
+//_c('+++++++++++++++++++++++++++++')
             return false;
         },
 
@@ -632,12 +633,12 @@
 
             this.ctx.moveTo(
                 this.area.location.left[0] - 9, 
-                positions[this.blockId][0][1] + this.radius
+                this.positions[0][1] + this.radius
             );
 
             this.ctx.lineTo(
-                positions[this.blockId][0][0] + (this.radius), 
-                positions[this.blockId][0][1] + (this.radius)
+                this.positions[0][0] + (this.radius), 
+                this.positions[0][1] + (this.radius)
             );
 
             this.ctx.strokeStyle = '#8695a2';
