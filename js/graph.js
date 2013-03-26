@@ -138,7 +138,7 @@
 
         graph.countDotes = options.dotes.length;        // кол-во точек
 
-        graph.offsetY    = 22;                          // смещение по оси Y
+        graph.offsetY    = 20;                          // смещение по оси Y
         graph.offsetX    = 0;                           // смещение по оси X
 
 
@@ -188,40 +188,26 @@
             currId = $(this).attr('id');
 
             // для сдвига координат
-            var currOffsets = {}, prevOffsets = {}, shiftOffset = {}, gGraph;
+            var currOffsets = {}, shiftOffset = {}, gGraph;
 
             if ( (numDote = graph.isPointInDote(offset)) !== false ) {
                 $(document).on('mousemove.KGraph_' + graph.blockId, function(e) {
+                    
                     offsets = graph.getOffset(e);
-/*
-                    if ( 'CANVAS' == e.target.nodeName && e.target.id != 'canva_' + graph.blockId) {
-                        return;
-                    }
-*/
 
-_c(e.target.nodeName)
-                    // ушли из канваса
-                    if ( 'HTML' == e.target.nodeName ) {
+                    if ( e.target.id != currId ) {
  
                         if (!shiftOffset.x) {
-                            shiftOffset.x = offsets.x - currOffsets.x;
-                            shiftOffset.y = offsets.y - currOffsets.y;
+                            shiftOffset.x = e.pageX - currOffsets.x;
+                            shiftOffset.y = e.pageY - currOffsets.y;
                         }
     
-                        offsets.x = prevOffsets.x = offsets.x - shiftOffset.x;
-                        offsets.y = prevOffsets.x = offsets.y - shiftOffset.y;
+                        offsets.x = e.pageX - shiftOffset.x;
+                        offsets.y = e.pageY - shiftOffset.y;
 
                     } else {
                         currOffsets = offsets;
                     } 
-
-                    gGraph = $("#" + e.target.id).closest('.k_graphs');
-
-                    if ( gGraph.length > 0 && gGraph.find('canvas').attr('id') != 'canva_' + graph.blockId ) {
-                        return;
-                    }
-
-
 
                     positions[graph.blockId][numDote] = [ 
                         offsets.x - graph.radius,
@@ -387,17 +373,12 @@ _c(e.target.nodeName)
             function _getValue(coords) {
 
                 // сдвиг по координатам по оси Х
-                // TODO: исправлено на одинаковый сдвиг
-                //var shiftX = coords.party == 'left' ? 1 : 1;
-                //var shiftY = coords.party == 'left' ? 1.5 : 1.5;
-
-                var shiftY = 1.5;
+                var shiftY = -0.3;
                 var shiftX = 1;
 
-
                 var c = {
-                    'x' : coords.x + this.radius - shiftX,
-                    'y' : coords.y + this.radius - shiftY
+                    'x' : Math.round(coords.x + this.radius - shiftX),
+                    'y' : Math.round(coords.y + this.radius - shiftY)
                 };
 
                 var 
