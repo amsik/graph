@@ -1,6 +1,6 @@
 ;(function($){
-    
-    var targetsConf = {}, airFile, toConf = null, positions = [], values = [];
+
+    var targetsConf = {}, airFile, toConf = null, positions = [], values = [], currId;
 
     if ( typeof document.onselectstart != 'undefined' ) {
         document.onselectstart = function() {
@@ -185,15 +185,50 @@
                 offset = graph.getOffset(e),
                 numDote, offsets; 
 
+            currId = $(this).attr('id');
+
+            // для сдвига координат
+            var currOffsets = {}, prevOffsets = {}, shiftOffset = {}, gGraph;
+
             if ( (numDote = graph.isPointInDote(offset)) !== false ) {
                 $(document).on('mousemove.KGraph_' + graph.blockId, function(e) {
                     offsets = graph.getOffset(e);
+/*
+                    if ( 'CANVAS' == e.target.nodeName && e.target.id != 'canva_' + graph.blockId) {
+                        return;
+                    }
+*/
+
+_c(e.target.nodeName)
+                    // ушли из канваса
+                    if ( 'HTML' == e.target.nodeName ) {
+ 
+                        if (!shiftOffset.x) {
+                            shiftOffset.x = offsets.x - currOffsets.x;
+                            shiftOffset.y = offsets.y - currOffsets.y;
+                        }
+    
+                        offsets.x = prevOffsets.x = offsets.x - shiftOffset.x;
+                        offsets.y = prevOffsets.x = offsets.y - shiftOffset.y;
+
+                    } else {
+                        currOffsets = offsets;
+                    } 
+
+                    gGraph = $("#" + e.target.id).closest('.k_graphs');
+
+                    if ( gGraph.length > 0 && gGraph.find('canvas').attr('id') != 'canva_' + graph.blockId ) {
+                        return;
+                    }
+
+
 
                     positions[graph.blockId][numDote] = [ 
                         offsets.x - graph.radius,
                         offsets.y - graph.radius
                     ];
-                    _c(offsets.x)
+
+
                     graph.setDirection(offset, offsets, numDote);
                     graph.render(true);
 
@@ -229,13 +264,7 @@
                         'width': options.node.width(), 
                         'height': options.node.height() + 50
                     })
-                    .appendTo(options.node)
-                    .css({
-                        'top'        : '-20px',
-                        'position'   : 'relative',
-                        'marginLeft' : '6px',
-                        'marginTop'  : '22px'
-                    });
+                    .appendTo(options.node);
 
         this.ctx = document.getElementById('canva_' + blockId).getContext('2d');
 
