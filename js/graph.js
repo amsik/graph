@@ -100,6 +100,7 @@
             return str;
         },
 
+        // отладка в AIR 
         airTrace : function(obj) {
             for(var i in obj) {
 
@@ -188,7 +189,7 @@
             currId = $(this).attr('id');
 
             // для сдвига координат
-            var currOffsets = {}, shiftOffset = {}, gGraph;
+            var currOffsets = {}, shiftOffset = {};
 
             if ( (numDote = graph.isPointInDote(offset)) !== false ) {
                 $(document).on('mousemove.KGraph_' + graph.blockId, function(e) {
@@ -532,8 +533,7 @@
         // рисуем 
         render: function(reDraw) {
 
-
-            this.ctx.clearRect(0, 10, this.canvas.height(), this.canvas.width());
+            this.ctx.clearRect(0, 0, this.canvas.height(), this.canvas.width());
 
             var pos = positions[this.blockId];
 
@@ -637,7 +637,7 @@
         },
 
         startDrawLine: function() {
-            this.ctx.clearRect(0, 10, this.canvas.width(), this.canvas.height());
+            this.ctx.clearRect(0, 0, this.canvas.width(), this.canvas.height());
             this.ctx.beginPath();
 
             this.ctx.moveTo(
