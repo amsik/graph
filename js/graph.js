@@ -196,6 +196,7 @@
                     
                     offsets = graph.getOffset(e);
 
+                    // выезд за пределы канваса
                     if ( e.target.id != currId ) {
  
                         if (!shiftOffset.x) {
@@ -206,7 +207,7 @@
                         offsets.x = e.pageX - shiftOffset.x;
                         offsets.y = e.pageY - shiftOffset.y;
 
-                    } else {
+                    } else { // все еще над канвасом
                         currOffsets = offsets;
                     } 
 
@@ -248,7 +249,7 @@
 
         this.canvas = $('<canvas/>', { 'id': 'canva_' + blockId })
                     .attr({ 
-                        'width': options.node.width(), 
+                        'width' : options.node.width(), 
                         'height': options.node.height() + 50
                     })
                     .appendTo(options.node);
@@ -266,13 +267,14 @@
             currBlock   = $('#' + this.blockId);
 
 
+        // создание изначальных контейнеров для текста
         for ( var i = 0; i < 4; i++ ) {
 
             doteBlock = $('<div class="dote_block"></div>').prependTo(dataParent);
 
             doteBlock
                 .prepend( $('<span/>').addClass(this.cssClasses['dote_name']))
-                .append( $('<span/>').addClass(this.cssClasses['dote_value']));
+                .append(  $('<span/>').addClass(this.cssClasses['dote_value']));
 
             doteBlock.find('.' + this.cssClasses['dote_name']).text(literas[i]);
         }
@@ -287,6 +289,7 @@
         setDoteParams: function(obj) {
             this.doteParams = obj;
         },
+
 
         getPosition: function(i) {
             var pos = positions[this.blockId];
@@ -320,6 +323,7 @@
 
         },
 
+        // проверка на макс/мин значение
         checkVal: function(that, who) {
 
             if ( that > who['max'] ) 
@@ -332,6 +336,9 @@
 
         },
 
+
+        // расчет значений громкости и 
+        // времени по координатам
         calculateValue: function(n) {
 
             if (!n && n != 0) { 
@@ -360,7 +367,7 @@
 
             }
 
-            
+            // пишим в файл, если мы в аире
             if ('undefined' != typeof air) {
                 clearTimeout(toConf);    
     
@@ -417,6 +424,7 @@
 
         },
 
+        // рисуем наш текст
         displayData: function() {
 
             var 
@@ -434,6 +442,7 @@
 
         },
 
+        // определение стороны
         setDirection: function(down, move, numDote) {
 
             this.direction = {
@@ -445,6 +454,7 @@
 
         },
 
+        
         inPathMatrix: function(loc, pos, axis) {
 
             var realPos = pos + this.radius;
